@@ -4,26 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>在线麻将 · 宁德 / 福州 / 川麻</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css" />
+  <style>body { font-family: 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; }</style>
 </head>
 <body>
   <!-- 大厅 -->
   <div id="lobby" class="screen">
     <div class="lobby-card">
-      <h1>🀄 在线麻将</h1>
+      <h1><span class="icon">🀄</span> 在线麻将</h1>
       <p class="subtitle">宁德麻将 · 福州麻将 · 川麻(血战到底) ｜ 3/4人 ｜ 真人联机 + AI补位</p>
 
-      <label>你的昵称</label>
+      <label>👤 你的昵称</label>
       <input id="nameInput" placeholder="输入昵称" maxlength="8" />
 
-      <label>玩法模式</label>
+      <label>🎮 玩法模式</label>
       <div class="seg" id="variantSeg">
         <button data-v="ningde" class="active">宁德麻将</button>
         <button data-v="fuzhou">福州麻将</button>
         <button data-v="sichuan">川麻(血战)</button>
       </div>
 
-      <label>人数</label>
+      <label>👥 人数</label>
       <div class="seg" id="countSeg">
         <button data-c="3">3人</button>
         <button data-c="4" class="active">4人</button>
@@ -35,7 +38,7 @@
 
       <div class="divider"><span>或</span></div>
 
-      <label>加入已有房间</label>
+      <label>🔗 加入已有房间</label>
       <div class="row">
         <input id="roomInput" placeholder="房间号" maxlength="6" />
         <button id="joinBtn">加入</button>
