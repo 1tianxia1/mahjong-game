@@ -1,0 +1,16 @@
+{
+  "name": "mahjong-online",
+  "version": "1.0.0",
+  "description": "在线麻将：宁德麻将 / 福州麻将 / 川麻(血战到底)，支持3-4人实时联机 + AI补位",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/engine.test.js && node test/multi_hu.test.js && node test/repro_nan.js && node test/sfx_events.test.js && node test/ningde_fixed_jin.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

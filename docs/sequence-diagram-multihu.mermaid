@@ -1,0 +1,54 @@
+%% 一炮多响结算时序（R-004 核心修复）
+%% 修复前 src/engine.js:369  bestHu = bestHu or {...}  只保留第一个胡家，其余被丢弃
+sequenceDiagram
+    autonumber
+    participant G as Game
+    participant S0 as 座位0(点炮者)
+    participant S1 as 座位1(下家)
+    participant S2 as 座位2(对家)
+    participant S3 as 座位3(上家)
+
+    G->>G: doDiscard(S0, tile) + broadcast()
+    G->>G: resolveClaims(S0, tile)
+
+    par 并发向所有活跃玩家索取响应（Promise.all）
+        G->>S1: request(claim, actions=[hu])
+        S1-->>G: {type:'hu'}
+        and
+        G->>S2: request(claim, actions=[peng])
+        S2-->>G: {type:'pass'}
+        and
+        G->>S3: request(claim, actions=[hu])
+        S3-->>G: {type:'hu'}
+    end
+
+    Note over G: 修复前只留第 1 家，S3 的胡被静默丢弃
+    G->>G: huSeats=[1,3]，按 dist(seat)=(seat-0+n)%n 升序排（下家优先）
+    alt variant.bloodBattle == true（川麻血战）
+        G->>G: return {type:'hu', seats:[1,3], tile}
+    else 非血战（宁德/福州）
+        G->>G: return {type:'hu', seats:[1], tile} 仅座次最近一家
+    end
+
+    G->>G: handleClaim(claim, S0)
+    G->>G: doMultiRon([1,3], S0, tile, false)
+    Note over G: last = (wall.length===0) 在循环外算一次，保证各家「海底」番一致
+
+    loop 对每个胡家逐一结算
+        G->>G: res = evaluateWin(p, tile, {selfDraw:false, rob, last}) 防御性复核
+        G->>G: S0.score -= res.score ; p.score += res.score
+        G->>G: p.lastWin = {type:'ron', from:0, multi:true, ...res}
+        G->>G: log(胡家 胡 S0 的 tile ... +score)
+    end
+    G->>G: log(一炮多响：2 家同时胡牌)
+
+    G->>G: continueAfterMultiWin([1,3])
+    G->>G: markWinner(1) ; markWinner(3) 只标记，不判终局
+    G->>G: checkGameEnd() 批量标记后统一判一次
+    alt winners.length >= playerCount-1
+        G->>G: endGame('hu') → 查叫结算（天然支持多赢家）→ broadcast()
+        Note over G: run() 主循环检测 phase!=='playing' → break
+    else 血战继续
+        G->>G: current = nextActive(S0.seat) 自动跳过已胡家
+        Note over G: handleClaim 返回 true → 主循环不再 advanceTurnFrom
+    end

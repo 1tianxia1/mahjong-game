@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>在线麻将 · 宁德 / 福州 / 川麻</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <!-- 大厅 -->
+  <div id="lobby" class="screen">
+    <div class="lobby-card">
+      <h1>🀄 在线麻将</h1>
+      <p class="subtitle">宁德麻将 · 福州麻将 · 川麻(血战到底) ｜ 3/4人 ｜ 真人联机 + AI补位</p>
+
+      <label>你的昵称</label>
+      <input id="nameInput" placeholder="输入昵称" maxlength="8" />
+
+      <label>玩法模式</label>
+      <div class="seg" id="variantSeg">
+        <button data-v="ningde" class="active">宁德麻将</button>
+        <button data-v="fuzhou">福州麻将</button>
+        <button data-v="sichuan">川麻(血战)</button>
+      </div>
+
+      <label>人数</label>
+      <div class="seg" id="countSeg">
+        <button data-c="3">3人</button>
+        <button data-c="4" class="active">4人</button>
+      </div>
+
+      <label class="checkbox"><input type="checkbox" id="aiFill" checked /> 空座位用 AI 补位（单人也能玩）</label>
+
+      <button id="createBtn" class="primary">创建房间</button>
+
+      <div class="divider"><span>或</span></div>
+
+      <label>加入已有房间</label>
+      <div class="row">
+        <input id="roomInput" placeholder="房间号" maxlength="6" />
+        <button id="joinBtn">加入</button>
+      </div>
+
+      <div id="lobbyStatus"></div>
+    </div>
+  </div>
+
+  <!-- 等待室 -->
+  <div id="waitroom" class="screen hidden">
+    <div class="lobby-card">
+      <h2>房间 <span id="waitRoomId"></span></h2>
+      <p id="waitInfo"></p>
+      <div id="playerList" class="player-list"></div>
+      <div class="row">
+        <button id="copyInvite" class="ghost">复制邀请链接</button>
+        <button id="startBtn" class="primary">开始游戏</button>
+      </div>
+      <div id="waitHint" class="hint"></div>
+    </div>
+  </div>
+
+  <!-- 牌桌 -->
+  <div id="table" class="screen hidden">
+    <div class="topbar">
+      <span id="variantLabel"></span>
+      <span id="roomLabel"></span>
+      <span id="seatLabel"></span>
+      <button id="muteBtn" class="ghost small" title="音效开关">🔊</button>
+      <button id="leaveBtn" class="ghost small">退出</button>
+    </div>
+
+    <div class="table-frame">
+      <div class="table-felt">
+        <!-- 四边牌墙（开局一次性渲染，2D 平铺牌背） -->
+        <div class="wall wall-top"    data-region="wall" data-side="top"></div>
+        <div class="wall wall-bottom" data-region="wall" data-side="bottom"></div>
+        <div class="wall wall-left"   data-region="wall" data-side="left"></div>
+        <div class="wall wall-right"  data-region="wall" data-side="right"></div>
+
+        <div class="board" id="board">
+          <!-- 四角座位（NW 对家 / NE 右家 / SW 左家 / SE 自家） -->
+          <div class="seat" data-corner="NW" data-region="seat"></div>
+          <div class="seat" data-corner="NE" data-region="seat"></div>
+          <div class="seat" data-corner="SW" data-region="seat"></div>
+          <div class="seat" data-corner="SE" data-region="seat"></div>
+          <div class="center-disc" data-region="center" id="centerDisc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 出牌飞行动效图层：脱离渲染树，避免被 renderBoard 打断 -->
+    <div id="fxLayer"></div>
+    <div class="actionbar" id="actionbar"></div>
+    <div class="log" id="log"></div>
+    <div id="resultMask" class="mask hidden"></div>
+  </div>
+
+  <!-- 音效模块（Web Audio 程序化合成，无音频文件）；先于 app.js 加载以拿到 window.Sfx -->
+  <script src="/js/sound.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

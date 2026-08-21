@@ -1,0 +1,184 @@
+classDiagram
+    class Game {
+        +variant: VariantConfig
+        +players: Player[]
+        +phase: string
+        +current: int
+        +dealer: int
+        +wall: int[]
+        +jinIndex: int
+        +jinDice: int
+        +lastDiscard: Object
+        +lastDrawn: Object
+        +winners: Object[]
+        +endReason: string
+        +messages: string[]
+        +playerCount: int
+        +deal() void
+        +determineJin() void
+        +evaluateWin(p, t, opts) Object
+        +getSelfActions(p) Action[]
+        +getDiscardActions(p) Action[]
+        +getClaimActions(p, f, t) Action[]
+        +doDiscard(p, t) void
+        +doSelfGang(p, a) void
+        +doMeldClaim(s, d, a) void
+        +doMultiRon(seats, d, t, r) int[]
+        +doRon(s, d, t, r) void
+        +doSelfHu(p, t) void
+        +resolveClaims(d, t) Promise
+        +handleClaim(c, d) bool
+        +checkQiangGang(p, t) Promise
+        +markWinner(s) void
+        +checkGameEnd() bool
+        +continueAfterWin(s) bool
+        +continueAfterMultiWin(seats) bool
+        +endGame(reason) void
+        +getState() State
+        +computeRemainingJin() int
+    }
+
+    class VariantConfig {
+        +key: string
+        +name: string
+        +useHonors: bool
+        +useFixedJin: bool
+        +jinTile: int
+        +jin: bool
+        +threeJinWin: int
+        +minFan: int
+        +queMen: bool
+        +bloodBattle: bool
+        +basePoint: int
+        +scoring: string
+        +fanWeights: Object
+    }
+
+    class TileSet {
+        +useHonors: bool
+        +fixedJinIndex: int
+        +totalTiles: int
+    }
+
+    class VARIANT_TILE_SETS {
+        +ningde: TileSet
+        +fuzhou: TileSet
+        +sichuan: TileSet
+    }
+
+    class TilesModule {
+        +SUITS: string[]
+        +HONOR_NAMES: string[]
+        +SUIT_LABEL: Object
+        +idxToStr(i) string
+        +strToIdx(s) int
+        +isHonor(i) bool
+        +suitOf(i) int
+        +numberOf(i) int
+        +tileName(i) string
+        +tileUnicode(i) string
+        +getTileSet(variant) TileSet
+        +buildVariantTileBag(variant) int[]
+        +buildTileBag(useHonors) int[]
+        +toCounts(hand, ignoreIdx) int[]
+    }
+
+    class StateMeta {
+        +basePoint: int
+        +useFixedJin: bool
+        +jinTileId: int
+        +jinTileName: string
+        +remainingJinCount: int
+    }
+
+    class PlayerState {
+        +seat: int
+        +name: string
+        +isAI: bool
+        +isWinner: bool
+        +score: int
+        +handCount: int
+        +queMen: string
+        +melds: Meld[]
+        +discards: int[]
+        +lastWin: WinInfo
+    }
+
+    class State {
+        +variant: string
+        +variantName: string
+        +meta: StateMeta
+        +phase: string
+        +current: int
+        +dealer: int
+        +wallCount: int
+        +jinIndex: int
+        +lastDiscard: Object
+        +lastDrawn: Object
+        +players: PlayerState[]
+        +winners: Object[]
+        +endReason: string
+        +messages: string[]
+    }
+
+    class BoardRenderer {
+        +renderBoard() void
+        +renderWall() void
+        +renderSeats() void
+        +renderCenterDisc() void
+        +renderHand() void
+        +renderDiscardFor(seat, pl, corner) void
+    }
+
+    class TileRenderer {
+        +tileHTML(i, extraCls, attrs) string
+        +tilesHTML(arr, sizeCls, withIdx) string
+        +tileFaceHTML(i) string
+        +pipsHTML(n, suitCls) string
+    }
+
+    class AvatarRenderer {
+        +avatarText(name) string
+    }
+
+    class Fx {
+        +flyTile(fromEl, toPoint, duration) void
+        +ping(el, cls, ms) void
+        +pingIfFirstFrame(el, cls, ms) void
+    }
+
+    class Sfx {
+        -ctx: AudioContext
+        -muted: bool
+        -SOUND_PRESETS: Object
+        +play(type) void
+        +setMuted(v) void
+        +toggleMuted() bool
+        +isMuted() bool
+    }
+
+    class Room {
+        +players: Player[]
+        +game: Game
+        +started: bool
+        +request(seat, prompt) Promise
+        +broadcast() void
+        +submitAction(seat, action) void
+    }
+
+    Game "1" *-- "1" VariantConfig : uses
+    Game ..> StateMeta : getState 追加 meta
+    Game ..> TilesModule : deal 调 buildVariantTileBag
+    Game ..> TileRenderer : getState 消费 tileName
+    TilesModule ..> VARIANT_TILE_SETS : getTileSet 查表
+    VARIANT_TILE_SETS "1" *-- "3" TileSet : 配置
+    VariantConfig ..> TileSet : useFixedJin/jinTile 对应
+    State "1" *-- "1" StateMeta : meta 子对象
+    State "1" *-- "3..4" PlayerState : players
+    Room "1" --> "1" Game : 驱动
+    BoardRenderer ..> State : 消费
+    BoardRenderer ..> TileRenderer : 调 tilesHTML
+    BoardRenderer ..> AvatarRenderer : 调 avatarText
+    BoardRenderer ..> Fx : 触发 wall-fadein
+    BoardRenderer ..> Sfx : 通过 detectEvents 间接调用
+    TileRenderer ..> State : 读 state.jinIndex 判定 .jin 类

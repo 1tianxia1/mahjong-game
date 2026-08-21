@@ -1,0 +1,43 @@
+%% 出牌全链路：两步确认 → 飞出动效 → WS 提交 → 引擎响应 → 状态下发 → 渲染
+%% 对应需求：R-002（出牌操作优化）+ R-001（牌面渲染）+ R-006（出牌音效）
+sequenceDiagram
+    autonumber
+    participant U as 玩家
+    participant DOM as 手牌 DOM
+    participant App as app.js
+    participant FxL as Fx / fxLayer
+    participant Sfx as sound.js
+    participant WS as WebSocket
+    participant R as Room
+    participant G as Game(engine)
+
+    Note over App: prompt.type='turn'，已给手牌加 .discardable
+    U->>DOM: 第 1 次点击某张手牌
+    DOM->>App: click 事件冒泡（事件委托 closest('.tile.discardable')）
+    App->>App: selectTile(idx, tile)：selectedIdx=idx
+    App->>DOM: 移除旧 .sel，为该牌加 .sel（上浮+金边+微放大）
+    App->>App: renderAction() 追加「出牌」确认按钮
+
+    U->>DOM: 第 2 次点击同一张牌（或点确认按钮）
+    DOM->>App: click → 判定 idx === selectedIdx → confirmDiscard()
+    App->>FxL: Fx.flyTile(牌元素, board中心, 300ms)
+    FxL->>FxL: 克隆牌到 fxLayer(position:fixed) → rAF 设置 transform+opacity
+    App->>Sfx: Sfx.play('discard')
+    App->>WS: send({action:'action', move:{type:'discard', tile}})
+    App->>App: clearSelection() + 动作条置「已提交，等待其他玩家…」
+
+    Note over App,FxL: 提交不等待动画，替身在独立图层继续飞行（不被重渲染打断）
+
+    WS->>R: submitAction(seat, move)
+    R->>R: clearTimeout(倒计时) → pending[seat].resolve(move)
+    R->>G: await request() 兑现
+    G->>G: doDiscard(p, tile)：手牌移除/入弃牌堆/更新 lastDiscard
+    G->>R: broadcast()
+    R->>WS: {type:'state', state}（按座位裁剪他人手牌）
+    WS->>App: onmessage
+    App->>App: prevState=state; state=新state
+    App->>App: detectEvents(prev,next)：本地已播过则跳过
+    App->>App: renderBoard()：重建座位/牌面，弃牌区末张加 .last-discard
+    FxL->>FxL: duration 后移除替身元素
+
+    G->>G: await resolveClaims(p, tile) —— 见 sequence-diagram-multihu.mermaid

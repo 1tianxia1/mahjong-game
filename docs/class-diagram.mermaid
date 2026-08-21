@@ -1,0 +1,105 @@
+classDiagram
+    class Game {
+        +variant: Object
+        +players: Player[]
+        +phase: string
+        +current: int
+        +wall: int[]
+        +jinIndex: int
+        +lastDiscard: Object
+        +winners: Object[]
+        +playerCount: int
+        +run() Promise
+        +resolveClaims(discarder, tile) Promise~ClaimResult~
+        +handleClaim(claim, discarder) bool
+        +checkQiangGang(player, tile) Promise~QiangGangResult~
+        +doMultiRon(seats, discarder, tile, rob) int[]
+        +doRon(seat, discarder, tile, rob) void
+        +markWinner(seat) void
+        +checkGameEnd() bool
+        +continueAfterWin(seat) bool
+        +continueAfterMultiWin(seats) bool
+        +evaluateWin(player, winTile, opts) Object
+        +getClaimActions(player, fromSeat, tile) Action[]
+        +endGame(reason) void
+        +getState() State
+    }
+    class Player {
+        +seat: int
+        +name: string
+        +isAI: bool
+        +hand: int[]
+        +melds: Meld[]
+        +discards: int[]
+        +score: int
+        +isWinner: bool
+        +queMen: string
+        +lastWin: WinInfo
+    }
+    class ClaimResult {
+        +type: string
+        +seats: int[]
+        +seat: int
+        +tile: int
+        +tiles: int[]
+    }
+    class WinInfo {
+        +type: string
+        +from: int
+        +rob: bool
+        +multi: bool
+        +fan: int
+        +names: string[]
+        +score: int
+    }
+    class Room {
+        +players: Player[]
+        +game: Game
+        +request(seat, prompt) Promise
+        +broadcast() void
+        +submitAction(seat, action) void
+    }
+    class AppState {
+        +state: State
+        +prompt: Prompt
+        +mySeat: int
+        +selectedIdx: int
+        +selectedTile: int
+        +handle(msg) void
+        +renderBoard() void
+        +renderAction() void
+        +selectTile(idx, tile) void
+        +confirmDiscard() void
+        +clearSelection() void
+        +detectEvents(prev, next) string[]
+    }
+    class TileRenderer {
+        +tileHTML(i, extraCls, attrs) string
+        +tilesHTML(arr, sizeCls, withIdx) string
+        +tileFaceHTML(i) string
+        +pipsHTML(n, suitCls) string
+    }
+    class Fx {
+        +flyTile(fromEl, toPoint, duration) void
+        +ping(el, cls, ms) void
+    }
+    class Sfx {
+        -ctx: AudioContext
+        -muted: bool
+        -SOUND_PRESETS: Object
+        +play(type) void
+        +setMuted(v) void
+        +toggleMuted() bool
+        +isMuted() bool
+    }
+
+    Game "1" *-- "3..4" Player : 持有
+    Game ..> ClaimResult : resolveClaims 返回
+    Player "1" --o "0..1" WinInfo : lastWin
+    Room "1" --> "1" Game : 驱动并转发动作
+    Room ..> Player : AI 补位/断线托管
+    AppState ..> TileRenderer : 渲染牌面
+    AppState ..> Fx : 触发动效
+    AppState ..> Sfx : detectEvents 后播放
+    AppState ..> Room : 上行 WebSocket action
+    Room ..> AppState : 下行 WebSocket state

@@ -1,0 +1,76 @@
+sequenceDiagram
+    autonumber
+    participant C as 客户端 (index.html)
+    participant S as server.js
+    participant R as Room
+    participant G as Game (engine.js)
+    participant V as variants.js
+    participant T as tiles.js
+    participant A as app.js
+
+    Note over C,V: 【增量】宁德麻将 = 112 张 + 固定白板为金
+
+    C->>S: WS {action:'create', variant:'ningde', playerCount:4}
+    S->>R: new Room(...)
+    R->>G: new Game(VARIANTS.ningde, players, hooks)
+    Note over G,V: variants.ningde = { useHonors:false, useFixedJin:true, jinTile:33, jin:true, basePoint:1, ... }
+
+    R->>R: room.start() → game.run()
+    G->>G: run() → deal()
+
+    Note over G,T: ★增量改造点 ①：deal() 改用 per-variant 牌池
+    G->>T: buildVariantTileBag(variant)
+    T->>T: getTileSet(variant) → {useHonors:false, fixedJinIndex:33, totalTiles:112}
+    T->>T: 构造 bag: t∈[0..26]×4 = 108 张 + t=33×4 = 4 张 → 共 112
+    T-->>G: [..112 tiles shuffled..]
+    G->>G: 13×4 = 52 张发到手牌；wall 剩 60
+    G->>G: if (variant.jin) determineJin()
+
+    Note over G: ★增量改造点 ②：determineJin() 固定金早返
+    G->>G: if (variant.useFixedJin) { jinIndex=33; jinDice=0; log("宁德固定金：白板（4 张）"); return; }
+    Note over G: 福州/其他走原有骰子翻金分支
+
+    G-->>R: broadcast()
+    Note over R,G: ★增量改造点 ③：getState() 追加 meta
+    R->>G: getState()
+    G-->>R: { ..., meta:{basePoint:1, useFixedJin:true, jinTileId:33, jinTileName:'白', remainingJinCount:4} }
+    R->>R: broadcast() 逐客户端注入 youSeat + 手牌
+    R-->>C: WS {type:'state', state:{...meta...}}
+
+    Note over A: 【增量】前端 renderBoard 拆分 5 子函数
+    C->>A: handle(m) → state = m.state; detectEvents; renderBoard()
+    A->>A: renderBoard() → renderWall + renderSeats + renderCenterDisc + renderHand
+
+    Note over A: ★T02 牌墙：仅 phase=='playing' 首次进入时填一次
+    A->>A: renderWall() 填充 .wall-{top,bottom,left,right} 各 18/6 块
+    A->>A: Fx.pingIfFirstFrame(board, 'wall-fadein', 600)
+
+    Note over A: ★T03 头像：按座位号 hash 取 6 色
+    A->>A: renderSeats() 按 youSeat 旋转 4 角 → 头像 + 名字 + 分数
+    A->>A: renderHand() 叠压 (margin:0 -1px) + 选中态重放
+
+    Note over A: ★T04 中央信息盘：meta 驱动金牌显示
+    A->>A: renderCenterDisc()
+    alt state.meta.useFixedJin == true
+        A->>A: 显示 "白板 × 4"（meta.remainingJinCount）
+    else state.jinIndex >= 0
+        A->>A: 显示 "金牌 XXX"（v1 JINNAME 逻辑）
+    end
+    A->>A: 剩余牌数 (大号 32px) + 轮到 + 已胡家数(川麻)
+
+    Note over A: ★T04 弃牌四方向
+    A->>A: renderSeats() 内联 renderDiscardFor() → 按 data-corner 映射 data-dir
+    A->>A: 弃牌区朝中央盘方向延伸 + 最后弃牌 .last-discard 高亮
+
+    Note over C,A: 福州 / 川麻路径：meta.useFixedJin=false；中央盘显示 JINNAME(jinIndex) 与 v1 一致
+
+    Note over C,G: 【后续摸牌】前端局部更新，牌墙不重渲染
+    G->>G: 摸牌 → doDiscard / doSelfGang
+    G-->>R: broadcast()
+    R->>R: getState() 重新计算 meta.remainingJinCount
+    Note over R: 白板若被弃：4→3；若被碰/杠：4→3；若还在隐藏手牌：保持 4
+    R-->>C: WS {type:'state', state:{...meta.remainingJinCount:N...}}
+    C->>A: state = m.state; detectEvents → ['discard']
+    A->>A: Sfx.play('discard')
+    A->>A: renderBoard() 局部更新（不重建牌墙）
+    A->>A: renderCenterDisc() → "白板 × N"（自动跟随）

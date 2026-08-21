@@ -1,0 +1,21 @@
+%% 音效事件推导流程（R-006）
+%% 前端只收到 state 全量快照，没有事件流 → 用纯函数 detectEvents 做状态差分推导
+sequenceDiagram
+    autonumber
+    participant WS as WebSocket
+    participant App as app.js
+    participant D as detectEvents(纯函数)
+    participant Sfx as sound.js
+
+    WS->>App: {type:'state', state:next}
+    App->>App: const prev = state（先保存上一帧，再覆盖）
+    App->>D: detectEvents(prev, next)
+    D->>D: prev==null 且 next.phase!=='waiting' → push 'deal'
+    D->>D: 任一 player.melds.length 增加 → push 'meld'
+    D->>D: next.lastDiscard 与 prev 不同 → push 'discard'
+    D->>D: next.winners.length > prev.winners.length → push 'hu'
+    D->>D: next.phase==='ended' 且 endReason==='draw' → push 'liuju'
+    D->>D: 优先级去重 hu > liuju > meld > discard > deal，仅保留最高一项
+    D-->>App: ['hu']
+    App->>Sfx: Sfx.play('hu')（静音/未初始化时静默返回，绝不抛异常）
+    App->>App: state = next ; renderBoard()
